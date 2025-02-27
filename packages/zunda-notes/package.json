@@ -1,0 +1,29 @@
+{
+  "name": "@zundamonizer/zunda-notes",
+  "version": "0.1.0",
+  "description": "Marpスライドにずんだもん風の会話形式プレゼンターノートを追加するツール",
+  "main": "cli.ts",
+  "type": "module",
+  "bin": {
+    "zunda-notes": "cli.ts"
+  },
+  "scripts": {
+    "start": "bun cli.ts",
+    "add": "bun cli.ts add",
+    "evaluate": "bun cli.ts evaluate",
+    "improve": "bun cli.ts improve",
+    "workflow": "bun cli.ts workflow",
+    "preview": "bun cli.ts preview"
+  },
+  "dependencies": {
+    "commander": "^11.1.0",
+    "openai": "^4.28.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.19",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}
