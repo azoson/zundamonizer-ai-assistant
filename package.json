@@ -1,0 +1,26 @@
+{
+  "name": "zundamonizer-ai-assistant",
+  "version": "0.1.0",
+  "description": "AIを活用した便利なツール群",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "marpify": "bun --cwd packages/marpify run start"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "openai": "^4.85.4"
+  }
+}

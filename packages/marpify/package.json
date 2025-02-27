@@ -1,0 +1,32 @@
+{
+  "name": "@zundamonizer/marpify",
+  "version": "0.1.0",
+  "description": "Markdownからmarpスライドを生成・改善するツール",
+  "main": "cli.ts",
+  "type": "module",
+  "bin": {
+    "marpify": "cli.ts"
+  },
+  "scripts": {
+    "start": "bun cli.ts",
+    "generate": "bun cli.ts generate",
+    "evaluate": "bun cli.ts evaluate",
+    "improve": "bun cli.ts improve",
+    "workflow": "bun cli.ts workflow",
+    "export": "bun cli.ts export",
+    "preview": "bun cli.ts preview",
+    "theme": "bun cli.ts theme",
+    "add-meta": "bun cli.ts add-meta"
+  },
+  "dependencies": {
+    "commander": "^11.1.0",
+    "openai": "^4.28.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.19",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}
