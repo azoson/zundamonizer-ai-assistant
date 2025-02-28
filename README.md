@@ -24,6 +24,19 @@ cd zundamonizer-ai-assistant
 bun install
 ```
 
+## 環境設定
+
+Zunda Notesパッケージを使用するためには、OpenAI APIキーを設定する必要があります。
+以下の環境変数を `.env` ファイルに設定してください：
+
+```
+OPENAI_API_KEY=your-api-key-here
+OPENAI_MODEL_NAME=gpt-4o  # デフォルトはgpt-4o。変更可能。
+```
+
+> **注意**: o1-miniモデルはトークン制限が小さいため、大きな入力を処理する際にエラーが発生する場合があります。
+> エラーが発生した場合は、`OPENAI_MODEL_NAME=gpt-4o` に設定することをお勧めします。
+
 ## 一気通貫ワークフロー
 
 マークダウン資料からMarpスライドを生成し、ずんだもんと春日部つむぎの会話形式でプレゼンターノートを追加・評価・改善するまでを一気通貫で実行できます。
@@ -44,6 +57,8 @@ bun zundamonizer-workflow path/to/document.md --zunda-character "ずんだもん
 2. プレゼンターノート付きスライド: `output-directory/02_zunda-notes/document-with-notes.md`
 3. 評価結果: `output-directory/02_zunda-notes/document-evaluation.md`
 4. 改善版スライド: `output-directory/02_zunda-notes/document-improved.md`
+
+> **注意**: スクリプトは絶対パスを使用して実行されるため、ファイルパスの解決に関する問題は発生しません。
 
 ## 利用可能なツール
 

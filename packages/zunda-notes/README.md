@@ -32,12 +32,14 @@ OPENAI_MODEL_NAME=gpt-4o
 ```
 
 サポートされているモデル例：
-- gpt-4o
+- gpt-4o (推奨)
 - gpt-4-turbo
 - gpt-3.5-turbo
-- o1-mini （Anthropicのモデル）
+- o1-mini (OpenAIのモデル)
 
-**注意**: o1-miniモデルを使用する場合は、自動的にパラメータが調整されます。このモデルは他のモデルとは異なるパラメータ形式が必要であるため、以下の自動調整が行われます：
+**注意**: o1-miniモデルはトークン制限が小さいため、大きなドキュメントや複雑な入力を処理する際にエラーが発生することがあります。この場合、`OPENAI_MODEL_NAME=gpt-4o`に設定することをお勧めします。
+
+o1-miniモデルを使用する場合は、自動的に以下のパラメータ調整が行われます：
 - `max_tokens`の代わりに`max_completion_tokens`が使用されます
 - `temperature`パラメータは除外されます（このモデルではデフォルト値のみサポート）
 
@@ -47,6 +49,12 @@ OPENAI_MODEL_NAME=gpt-4o
 
 ```bash
 bun zunda-notes add path/to/slide.md -o output/slide-with-notes.md
+```
+
+オリジナルの資料も参照してより詳細な解説を生成する場合：
+
+```bash
+bun zunda-notes add path/to/slide.md path/to/original-document.md -o output/slide-with-notes.md
 ```
 
 #### プレゼンターノートの評価
@@ -67,6 +75,12 @@ bun zunda-notes improve path/to/slide.md path/to/slide-with-notes.md path/to/eva
 bun zunda-notes workflow path/to/slide.md -o output-dir
 ```
 
+元の資料も参照する場合：
+
+```bash
+bun zunda-notes workflow path/to/slide.md path/to/original-document.md -o output-dir
+```
+
 #### スライドのプレビュー
 
 ```bash
@@ -76,8 +90,12 @@ bun zunda-notes preview path/to/slide.md
 ## オプション
 
 - `-o, --output <path>`: 出力ファイルパス
-- `--zunda-character <name>`: ずんだもんキャラクターの名前をカスタマイズ (デフォルト: "ずんだもん")
-- `--tsumugi-character <name>`: 春日部つむぎキャラクターの名前をカスタマイズ (デフォルト: "春日部つむぎ")
+- `--zunda-character <n>`: ずんだもんキャラクターの名前をカスタマイズ (デフォルト: "ずんだもん")
+- `--tsumugi-character <n>`: 春日部つむぎキャラクターの名前をカスタマイズ (デフォルト: "春日部つむぎ")
+
+## パスの扱いについて
+
+このパッケージは、絶対パスを使って各ファイルにアクセスするように設計されています。相対パスで指定された場合でも、内部で自動的に絶対パスに変換されるため、ディレクトリの場所に関係なく確実に動作します。
 
 ## 開発
 
@@ -85,12 +103,19 @@ bun zunda-notes preview path/to/slide.md
 
 ```
 packages/zunda-notes/
-├── cli.ts         # コマンドラインインターフェース
-├── add-notes.ts   # プレゼンターノート追加機能
-├── evaluation.ts  # プレゼンターノート評価機能
-├── improve.ts     # プレゼンターノート改善機能
-└── utils.ts       # ユーティリティ関数
+├── cli.ts                # コマンドラインインターフェース
+├── add-notes.ts          # プレゼンターノート追加機能
+├── evaluation.ts         # プレゼンターノート評価機能
+├── improve.ts            # プレゼンターノート改善機能
+├── character-settings.ts # キャラクター設定
+├── prompt-templates.ts   # プロンプトテンプレート
+└── utils.ts              # ユーティリティ関数
 ```
+
+## トラブルシューティング
+
+- **エラー「プレゼンターノートの生成に失敗しました」**: これはOpenAI APIからの応答が空の場合に発生します。モデルをgpt-4oに変更して再試行してください。
+- **「Invalid response object from API」エラー**: APIキーが正しく設定されていない可能性があります。`.env`ファイルのAPIキーを確認してください。
 
 ## ライセンス
 
