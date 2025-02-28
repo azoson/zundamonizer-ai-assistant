@@ -70,20 +70,27 @@ async function main() {
     // ステップ1: marpifyでスライド生成
     console.log("ステップ1: マークダウン資料からMarpスライドを生成中...");
     try {
-      // marpify の generate.ts を直接呼び出す
-      // 現在のディレクトリを保存
-      const originalDir = process.cwd();
-
       // パスを絶対パスに変換
-      const absoluteDocumentPath = path.resolve(originalDir, documentPath);
-      const absoluteOutputPath = path.resolve(originalDir, slidePath);
+      const absoluteDocumentPath = path.resolve(rootDir, documentPath);
+      const absoluteOutputPath = path.resolve(rootDir, slidePath);
 
-      process.chdir(path.join(rootDir, "packages/marpify"));
+      console.log(`入力ファイル: ${absoluteDocumentPath}`);
+      console.log(`出力ファイル: ${absoluteOutputPath}`);
+
+      // ディレクトリを変更せずに直接generateMainを呼び出す
       const { main: generateMain } = await import("../packages/marpify/generate.ts");
-      await generateMain([absoluteDocumentPath, absoluteOutputPath]);
 
-      // 元のディレクトリに戻る
-      process.chdir(originalDir);
+      // ESM環境でのコマンドライン引数の処理のため、プロセスの引数を一時的に変更
+      const originalArgs = process.argv;
+      process.argv = [process.argv[0], process.argv[1], absoluteDocumentPath, absoluteOutputPath];
+
+      try {
+        await generateMain();
+      } finally {
+        // 元の引数に戻す
+        process.argv = originalArgs;
+      }
+
       console.log(`✅ Marpスライドを ${slidePath} に生成しました`);
       console.log("");
     } catch (error) {
@@ -94,19 +101,37 @@ async function main() {
     // ステップ2: zunda-notesでプレゼンターノート追加
     console.log("ステップ2: Marpスライドにずんだもんと春日部つむぎの会話形式プレゼンターノートを追加中...");
     try {
-      // 現在のディレクトリを保存
-      const originalDir = process.cwd();
-
       // パスを絶対パスに変換
-      const absoluteSlideAbsPath = path.resolve(originalDir, slideAbsPath);
-      const absoluteDocumentAbsPath = path.resolve(originalDir, documentAbsPath);
-      const absoluteWithNotesAbsPath = path.resolve(originalDir, withNotesAbsPath);
+      const absoluteSlideAbsPath = path.resolve(rootDir, slideAbsPath);
+      const absoluteDocumentAbsPath = path.resolve(rootDir, documentAbsPath);
+      const absoluteWithNotesAbsPath = path.resolve(rootDir, withNotesAbsPath);
 
-      process.chdir(path.join(rootDir, "packages/zunda-notes"));
-      await addNotesMain([absoluteSlideAbsPath, absoluteDocumentAbsPath, absoluteWithNotesAbsPath, zundaCharacter, tsumugiCharacter]);
+      console.log(`スライドファイル: ${absoluteSlideAbsPath}`);
+      console.log(`元資料ファイル: ${absoluteDocumentAbsPath}`);
+      console.log(`出力ファイル: ${absoluteWithNotesAbsPath}`);
 
-      // 元のディレクトリに戻る
-      process.chdir(originalDir);
+      // addNotesMainを直接呼び出す
+      const { main: addNotes } = await import("../packages/zunda-notes/add-notes.ts");
+
+      // 引数を一時的に変更
+      const originalArgs = process.argv;
+      process.argv = [
+        process.argv[0],
+        process.argv[1],
+        absoluteSlideAbsPath,
+        absoluteDocumentAbsPath,
+        absoluteWithNotesAbsPath,
+        zundaCharacter,
+        tsumugiCharacter
+      ];
+
+      try {
+        await addNotes(process.argv.slice(2));
+      } finally {
+        // 元の引数に戻す
+        process.argv = originalArgs;
+      }
+
       console.log(`✅ プレゼンターノートを追加したスライドを ${withNotesPath} に生成しました`);
       console.log("");
     } catch (error) {
@@ -117,20 +142,35 @@ async function main() {
     // ステップ3: プレゼンターノートを評価
     console.log("ステップ3: プレゼンターノートを評価中...");
     try {
-      // 現在のディレクトリを保存
-      const originalDir = process.cwd();
-
       // パスを絶対パスに変換
-      const absoluteSlideAbsPath = path.resolve(originalDir, slideAbsPath);
-      const absoluteWithNotesAbsPath = path.resolve(originalDir, withNotesAbsPath);
-      const absoluteEvaluationAbsPath = path.resolve(originalDir, evaluationAbsPath);
+      const absoluteSlideAbsPath = path.resolve(rootDir, slideAbsPath);
+      const absoluteWithNotesAbsPath = path.resolve(rootDir, withNotesAbsPath);
+      const absoluteEvaluationAbsPath = path.resolve(rootDir, evaluationAbsPath);
 
-      process.chdir(path.join(rootDir, "packages/zunda-notes"));
-      const evaluation = await evaluateMain([absoluteSlideAbsPath, absoluteWithNotesAbsPath]);
-      await fs.writeFile(absoluteEvaluationAbsPath, evaluation, "utf-8");
+      console.log(`スライドファイル: ${absoluteSlideAbsPath}`);
+      console.log(`ノート付きファイル: ${absoluteWithNotesAbsPath}`);
+      console.log(`評価結果出力先: ${absoluteEvaluationAbsPath}`);
 
-      // 元のディレクトリに戻る
-      process.chdir(originalDir);
+      // 評価関数を直接呼び出す
+      const { main: evaluate } = await import("../packages/zunda-notes/evaluation.ts");
+
+      // 引数を一時的に変更
+      const originalArgs = process.argv;
+      process.argv = [
+        process.argv[0],
+        process.argv[1],
+        absoluteSlideAbsPath,
+        absoluteWithNotesAbsPath
+      ];
+
+      try {
+        const evaluation = await evaluate(process.argv.slice(2));
+        await fs.writeFile(absoluteEvaluationAbsPath, evaluation, "utf-8");
+      } finally {
+        // 元の引数に戻す
+        process.argv = originalArgs;
+      }
+
       console.log(`✅ 評価結果を ${evaluationPath} に保存しました`);
       console.log("");
     } catch (error) {
@@ -141,21 +181,38 @@ async function main() {
     // ステップ4: プレゼンターノートを改善
     console.log("ステップ4: プレゼンターノートを改善中...");
     try {
-      // 現在のディレクトリを保存
-      const originalDir = process.cwd();
-
       // パスを絶対パスに変換
-      const absoluteSlideAbsPath = path.resolve(originalDir, slideAbsPath);
-      const absoluteWithNotesAbsPath = path.resolve(originalDir, withNotesAbsPath);
-      const absoluteEvaluationAbsPath = path.resolve(originalDir, evaluationAbsPath);
-      const absoluteImprovedAbsPath = path.resolve(originalDir, improvedAbsPath);
+      const absoluteSlideAbsPath = path.resolve(rootDir, slideAbsPath);
+      const absoluteWithNotesAbsPath = path.resolve(rootDir, withNotesAbsPath);
+      const absoluteEvaluationAbsPath = path.resolve(rootDir, evaluationAbsPath);
+      const absoluteImprovedAbsPath = path.resolve(rootDir, improvedAbsPath);
 
-      process.chdir(path.join(rootDir, "packages/zunda-notes"));
-      const improved = await improveMain([absoluteSlideAbsPath, absoluteWithNotesAbsPath, absoluteEvaluationAbsPath]);
-      await fs.writeFile(absoluteImprovedAbsPath, improved, "utf-8");
+      console.log(`スライドファイル: ${absoluteSlideAbsPath}`);
+      console.log(`ノート付きファイル: ${absoluteWithNotesAbsPath}`);
+      console.log(`評価結果ファイル: ${absoluteEvaluationAbsPath}`);
+      console.log(`改善結果出力先: ${absoluteImprovedAbsPath}`);
 
-      // 元のディレクトリに戻る
-      process.chdir(originalDir);
+      // 改善関数を直接呼び出す
+      const { main: improve } = await import("../packages/zunda-notes/improve.ts");
+
+      // 引数を一時的に変更
+      const originalArgs = process.argv;
+      process.argv = [
+        process.argv[0],
+        process.argv[1],
+        absoluteSlideAbsPath,
+        absoluteWithNotesAbsPath,
+        absoluteEvaluationAbsPath
+      ];
+
+      try {
+        const improved = await improve(process.argv.slice(2));
+        await fs.writeFile(absoluteImprovedAbsPath, improved, "utf-8");
+      } finally {
+        // 元の引数に戻す
+        process.argv = originalArgs;
+      }
+
       console.log(`✅ 改善されたプレゼンターノートを ${improvedPath} に保存しました`);
       console.log("");
     } catch (error) {

@@ -2,13 +2,13 @@
  * zunda-notesのプロンプトテンプレート
  * AIとのやり取りに使用するプロンプトを一元管理します
  */
-import { getCharacterSettingsForPrompt, getCustomCharacterSettingsForPrompt } from './character-settings.js';
+import { getCharacterSettingsForPrompt } from './character-settings.js';
 
-export interface PromptParams {
+export interface AddNotesPromptParams {
   originalSlide: string;
   documentContent?: string;
-  zundamonName?: string;
-  tsumugiName?: string;
+  zundaCharacter: string;
+  tsumugiCharacter: string;
 }
 
 export interface EvaluationPromptParams {
@@ -25,37 +25,45 @@ export interface ImprovePromptParams {
 /**
  * プレゼンターノート追加用のプロンプトを生成する
  */
-export function getAddNotesPrompt(params: PromptParams): string {
-  const characterSettings = params.zundamonName && params.tsumugiName
-    ? getCustomCharacterSettingsForPrompt(params.zundamonName, params.tsumugiName)
-    : getCharacterSettingsForPrompt();
+export function getAddNotesPrompt(params: AddNotesPromptParams): string {
+  const documentSection = params.documentContent
+    ? `\n【参考資料】\n\`\`\`\n${params.documentContent}\n\`\`\``
+    : "";
 
   return `
 あなたはプレゼンテーション解説の専門家です。
-Marpスライドの各ページに対して、ずんだもんと春日部つむぎの会話形式でプレゼンターノートを作成してください。
+以下のMarpスライドの各ページに、${params.zundaCharacter}と${params.tsumugiCharacter}の会話形式でプレゼンターノートを追加してください。
 
-${characterSettings}
-
-【スライド内容】
+【スライド】
 \`\`\`
 ${params.originalSlide}
-\`\`\`
+\`\`\`${documentSection}
 
-${params.documentContent ? `【参考資料】\n\`\`\`\n${params.documentContent}\n\`\`\`\n` : ''}
+【指示】
+1. 各ページの最後に会話形式の解説を追加してください
+2. 元のスライドの構造（ページ分け）と内容はそのまま維持してください
+3. スライド内容を詳しく説明し、想定される質問とその回答も含めてください
+4. 会話は<!-- ${params.zundaCharacter}(emotion): コメント -->と<!-- ${params.tsumugiCharacter}(emotion): コメント -->の形式で記述してください
+5. キャラクターの特徴を口調や発言の内容に反映してください
+6. emotionには(happy)、(sad)、(thinking)、(neutral)、(angry) の感情表現を入れてください
+7. 出力は完全なスライド（元のスライド内容＋追加したNote）としてください
+8. 出力には Markdown の文書のみを含めてください
 
-【プレゼンターノート作成のポイント】
-1. 各スライドページの内容を説明するような会話を生成してください
-2. 会話はスライドの内容を補足し、発表者が参照しやすいものにしてください
-3. 想定される質問と回答も含めてください
-4. スライドの構造（ページ分け）を維持したまま、Note部分を追加してください
-5. 各ページごとに2〜4往復程度の会話を入れるのが理想的です
+【キャラクター設定】
+${getCharacterSettingsForPrompt()}
 
-出力は、元のスライド内容にNoteセクションを追加したものとしてください。
-各ページのNoteセクションは以下の形式で追加してください：
+出力例：
+---
+# スライドのタイトル
 
-Note:
-<!-- ずんだもん(emotion): （発言内容） -->
-<!-- 春日部つむぎ(emotion): （発言内容） -->
+- 箇条書き1
+- 箇条書き2
+
+<!-- ${params.zundaCharacter}(happy): このスライドは〇〇についての説明なのだ！ -->
+<!-- ${params.tsumugiCharacter}(neutral): なるほど、どのような点が重要なの？ -->
+<!-- ${params.zundaCharacter}(neutral): 特に△△がポイントなのだ。 -->
+<!-- ${params.tsumugiCharacter}(happy): わかりやすい説明をありがとう！ -->
+---
 `;
 }
 
@@ -71,7 +79,7 @@ export function getEvaluationPrompt(params: EvaluationPromptParams): string {
 
 1. プレゼンターノートはスライドの内容を適切に解説しているか（情報の正確さ）
 2. 会話形式は自然で理解しやすいか（会話の自然さ）
-3. キャラクターの特徴（ずんだもん：「〜のだ」、春日部つむぎ：「〜ですわ」などの口調）が適切に表現されているか
+3. キャラクターの特徴が適切に表現されているか
 4. プレゼンターにとって有用な情報が含まれているか（実用性）
 5. 想定される質問とその回答が適切に含まれているか（想定QA）
 
@@ -84,6 +92,9 @@ ${params.originalSlide}
 \`\`\`
 ${params.slideWithNotes}
 \`\`\`
+
+【キャラクター設定】
+${getCharacterSettingsForPrompt()}
 
 出力形式：
 <!-- ずんだもん(emotion): （発言内容） -->

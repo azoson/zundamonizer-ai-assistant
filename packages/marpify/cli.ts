@@ -236,4 +236,22 @@ program
     }
   });
 
-program.parse();
+// メイン関数をエクスポート
+export async function main(args: string[] = process.argv.slice(2)): Promise<any> {
+  // Commanderの動作モードをテストモードに設定して、parseAsyncが処理を終了させないようにする
+  program.exitOverride();
+  try {
+    return await program.parseAsync(args, { from: 'user' });
+  } catch (error: any) {
+    if (error.code === 'commander.helpDisplayed' || error.code === 'commander.unknownOption') {
+      // ヘルプ表示やオプションエラーの場合はそのまま表示を許可
+      return;
+    }
+    throw error;
+  }
+}
+
+// スクリプトが直接実行された場合のみparse()を実行
+if (import.meta.main) {
+  program.parse();
+}

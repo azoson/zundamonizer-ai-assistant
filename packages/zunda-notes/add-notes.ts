@@ -1,112 +1,125 @@
 #!/usr/bin/env bun
+import { OpenAI } from "openai";
 import * as fs from "fs/promises";
-import OpenAI from "openai";
-import { splitSlidePages } from "./utils.js";
+import path from "path";
 import { getAddNotesPrompt } from "./prompt-templates.js";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// 環境変数からモデル名を取得するか、デフォルト値を使用
+const MODEL_NAME = process.env.OPENAI_MODEL_NAME || "gpt-4o";
+
 /**
- * ずんだもんと春日部つむぎのかけあい形式のプレゼンターノートを生成する
+ * Marpスライドにプレゼンターノートを追加する
  */
-async function generateCharacterDialogue(
-  slideContent: string,
-  referenceContent: string | null,
-  zundamonName: string,
-  tsumugiName: string
+export async function addPresenterNotes(
+  slidePath: string,
+  documentPath: string | undefined,
+  zundaCharacter: string = "ずんだもん",
+  tsumugiCharacter: string = "春日部つむぎ"
 ): Promise<string> {
+  // スライドの内容を読み込む
+  const slideContent = await fs.readFile(
+    path.resolve(process.cwd(), slidePath),
+    "utf-8"
+  );
+
+  // 参考資料がある場合は読み込む
+  let documentContent: string | undefined;
+  if (documentPath && documentPath !== "") {
+    try {
+      documentContent = await fs.readFile(
+        path.resolve(process.cwd(), documentPath),
+        "utf-8"
+      );
+    } catch (error) {
+      console.warn("参考資料の読み込みに失敗しました:", error);
+    }
+  }
+
   const promptContent = getAddNotesPrompt({
     originalSlide: slideContent,
-    documentContent: referenceContent || undefined,
-    zundamonName,
-    tsumugiName
+    documentContent,
+    zundaCharacter,
+    tsumugiCharacter
   });
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4-turbo",
+  console.log(`使用するモデル: ${MODEL_NAME}`);
+
+  // モデル名によってパラメータを選択
+  const requestParams: any = {
+    model: MODEL_NAME,
     messages: [
-      {
-        role: "system",
-        content: "あなたはプレゼンテーション解説用のコンテンツを作成するアシスタントです。ずんだもんと春日部つむぎの会話形式のコメントスタイルでプレゼンターノートを作成します。"
-      },
       {
         role: "user",
         content: promptContent
       }
     ],
-    temperature: 0.7,
-    max_tokens: 1500,
-  });
+  };
 
-  return response.choices[0].message.content || "";
-}
-
-/**
- * プレゼンターノートをスライドに追加する
- */
-async function addPresenterNotesToSlide(
-  slidePath: string,
-  documentPath: string | undefined,
-  outputPath: string,
-  zundamonName: string,
-  tsumugiName: string
-): Promise<void> {
-  // スライドをページに分割
-  const pages = await splitSlidePages(slidePath);
-
-  // 元の資料がある場合は読み込む
-  let referenceContent: string | null = null;
-  if (documentPath) {
-    try {
-      referenceContent = await fs.readFile(documentPath, "utf-8");
-    } catch (error) {
-      console.warn(`警告: 参考資料 ${documentPath} を読み込めませんでした`);
-    }
+  // o1-miniモデル以外の場合のみtemperatureを設定
+  if (!MODEL_NAME.includes("o1-mini")) {
+    requestParams.temperature = 0.7;
   }
 
-  // 各ページにプレゼンターノートを追加
-  const pagesWithNotes: string[] = [];
-
-  for (let i = 0; i < pages.length; i++) {
-    const page = pages[i];
-
-    console.log(`ページ ${i + 1}/${pages.length} の会話形式プレゼンターノートを生成中...`);
-    const dialogue = await generateCharacterDialogue(page, referenceContent, zundamonName, tsumugiName);
-
-    // プレゼンターノートをマークダウンに追加
-    const pageWithNote = `${page}\n\nNote:\n${dialogue}\n`;
-    pagesWithNotes.push(pageWithNote);
+  // o1-miniモデルの場合はmax_completion_tokensを使用
+  if (MODEL_NAME.includes("o1-mini")) {
+    requestParams.max_completion_tokens = 4000;
+  } else {
+    requestParams.max_tokens = 4000;
   }
 
-  // 結果を保存
-  const combinedContent = pagesWithNotes.join("\n---\n\n");
-  await fs.writeFile(outputPath, combinedContent, "utf-8");
+  // OpenAI APIで処理
+  const response = await openai.chat.completions.create(requestParams);
+
+  console.log("OpenAI API レスポンス:", JSON.stringify(response, null, 2));
+
+  const result = response.choices[0]?.message?.content;
+  if (!result) {
+    throw new Error("プレゼンターノートの生成に失敗しました");
+  }
+
+  return result;
 }
 
 // メイン処理
-async function main() {
-  const args = process.argv.slice(2);
-
-  if (args.length < 3) {
-    console.error("使い方: bun add-notes.ts <slide-path> <document-path> <output-path> [zunda-character] [tsumugi-character]");
-    process.exit(1);
-  }
-
-  const slidePath = args[0];
-  const documentPath = args[1] !== '""' ? args[1] : undefined;
-  const outputPath = args[2];
-  const zundamonName = args[3] || "ずんだもん";
-  const tsumugiName = args[4] || "春日部つむぎ";
-
+export async function main(args: string[]): Promise<string> {
   try {
-    await addPresenterNotesToSlide(slidePath, documentPath, outputPath, zundamonName, tsumugiName);
-    console.log(`会話形式プレゼンターノートを追加したスライドを ${outputPath} に保存しました`);
+    const slidePath = args[0];
+    const documentPath = args[1];
+    const outputPath = args[2];
+    const zundaCharacter = args[3] || "ずんだもん";
+    const tsumugiCharacter = args[4] || "春日部つむぎ";
+
+    if (!slidePath) {
+      throw new Error(
+        "使い方: bun run add-notes.ts <slide-path> [document-path] <output-path> [zunda-character] [tsumugi-character]"
+      );
+    }
+
+    // プレゼンターノートを追加
+    const slideWithNotes = await addPresenterNotes(
+      slidePath,
+      documentPath !== "" ? documentPath : undefined,
+      zundaCharacter,
+      tsumugiCharacter
+    );
+
+    // 結果を保存
+    if (outputPath) {
+      await fs.writeFile(path.resolve(process.cwd(), outputPath), slideWithNotes, "utf-8");
+    }
+
+    return slideWithNotes;
   } catch (error) {
     console.error("エラーが発生しました:", error);
     process.exit(1);
   }
 }
 
-main();
+// スクリプトが直接実行された場合のみmain関数を実行
+if (import.meta.main) {
+  await main(process.argv.slice(2));
+}

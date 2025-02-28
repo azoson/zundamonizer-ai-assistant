@@ -59,7 +59,7 @@ ${markdownContent}
   return result;
 }
 
-async function main() {
+export async function main() {
   try {
     const documentFilePath = process.argv[2];
     const outputPath = process.argv[3];
@@ -93,4 +93,7 @@ async function main() {
   }
 }
 
-main();
+// スクリプトが直接実行された場合のみmain関数を実行
+if (import.meta.main) {
+  main();
+}

@@ -9,7 +9,7 @@
   "scripts": {
     "marpify": "bun --cwd packages/marpify run start",
     "zunda-notes": "bun --cwd packages/zunda-notes run start",
-    "zundamonizer-workflow": "bun scripts/zundamonizer-workflow.js"
+    "zundamonizer-workflow": "bun scripts/zundamonizer-workflow.ts"
   },
   "engines": {
     "bun": ">=1.0.0"
