@@ -6,6 +6,9 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// フロントマターを検出する正規表現
+const frontMatterRegex = /^---\s*[\r\n]+([\s\S]*?)[\r\n]+---/;
+
 const MARP_DESCRIPTION = `
 - ページの区切りは "---" を使用
 - テキストの位置調整は '<div style="text-align: center;">' などを使用
@@ -30,6 +33,7 @@ ${MARP_DESCRIPTION}
 
 スライドのガイドライン:
 - タイトルスライドを最初に作成してください
+- タイトルは必ず「# タイトル」の形式（# の後にスペース）で書いてください
 - 資料の内容を明確な構造で整理してください
 - 各スライドは簡潔かつ明確な内容にしてください
 - 適切な見出しレベルを使用してください
@@ -56,37 +60,47 @@ ${markdownContent}
     throw new Error("スライドの生成に失敗しました");
   }
 
-  return result;
+  // 常にフロントマターを追加（Marpスライドとして有効な形式にする）
+  const resultWithFrontMatter = `---
+marp: true
+---
+
+${result}`;
+
+  return resultWithFrontMatter;
 }
 
-export async function main() {
+export async function main(documentFilePath?: string, outputPath?: string) {
   try {
-    const documentFilePath = process.argv[2];
-    const outputPath = process.argv[3];
+    // コマンドライン引数があれば使用し、なければ関数の引数を使用
+    const docPath = documentFilePath || process.argv[2];
+    const outPath = outputPath || process.argv[3];
 
-    if (!documentFilePath) {
+    if (!docPath) {
       throw new Error(
         "Usage: bun run generate.ts <document-file-path> [output-file-path]"
       );
     }
 
     const markdownContent = await fs.readFile(
-      path.resolve(process.cwd(), documentFilePath),
+      path.resolve(process.cwd(), docPath),
       "utf-8"
     );
 
     const slideContent = await generateSlideFromMarkdown(markdownContent);
 
-    if (outputPath) {
+    if (outPath) {
       await fs.writeFile(
-        path.resolve(process.cwd(), outputPath),
+        path.resolve(process.cwd(), outPath),
         slideContent,
         "utf-8"
       );
-      console.log(`スライドを ${outputPath} に保存しました`);
+      console.log(`スライドを ${outPath} に保存しました`);
     } else {
       console.log(slideContent);
     }
+
+    return slideContent;
   } catch (error) {
     console.error("エラーが発生しました:", error);
     process.exit(1);

@@ -12,7 +12,10 @@ const MARP_DESCRIPTION = `
 - 段組表示には '<div style="display: grid; grid-template-columns: 1fr 1fr;">' などを使用
 `;
 
-async function improveSlideWithFeedback(
+// フロントマターを検出する正規表現
+const frontMatterRegex = /^---\s*[\r\n]+([\s\S]*?)[\r\n]+---/;
+
+export async function improveSlideWithFeedback(
   markdownContent: string,
   slideMarkdown: string,
   feedback: string
@@ -27,7 +30,12 @@ async function improveSlideWithFeedback(
 ユーザーからフィードバックを受け取り、スライドの内容を改善してください。
 
 スライドには以下の Marp 形式が利用可能です:
-${MARP_DESCRIPTION}`,
+${MARP_DESCRIPTION}
+
+スライドのガイドライン:
+- タイトルは必ず「# タイトル」の形式（# の後にスペース）で書いてください
+- 資料の内容を明確な構造で整理してください
+- 各スライドは簡潔かつ明確な内容にしてください`,
       },
       {
         role: "user",
@@ -60,41 +68,52 @@ ${feedback}
     throw new Error("スライドの改善に失敗しました");
   }
 
-  return result;
+  // 常にフロントマターを追加（Marpスライドとして有効な形式にする）
+  const resultWithFrontMatter = `---
+marp: true
+---
+
+${result}`;
+
+  return resultWithFrontMatter;
 }
 
-export async function main() {
+export async function main(documentFilePath?: string, slidesFilePath?: string, feedbackFilePath?: string) {
   try {
-    const documentFilePath = process.argv[2];
-    const slidesFilePath = process.argv[3];
-    const feedbackFilePath = process.argv[4];
+    const docPath = documentFilePath || process.argv[2];
+    const slidePath = slidesFilePath || process.argv[3];
+    const feedbackPath = feedbackFilePath || process.argv[4];
 
-    if (!documentFilePath || !slidesFilePath || !feedbackFilePath) {
+    if (!docPath || !slidePath || !feedbackPath) {
       throw new Error(
         "Usage: bun run improve.ts <document-file-path> <slides-file-path> <feedback-file-path>"
       );
     }
 
     const markdownContent = await fs.readFile(
-      path.resolve(process.cwd(), documentFilePath),
+      path.resolve(process.cwd(), docPath),
       "utf-8"
     );
     const slideMarkdown = await fs.readFile(
-      path.resolve(process.cwd(), slidesFilePath),
+      path.resolve(process.cwd(), slidePath),
       "utf-8"
     );
     const feedback = await fs.readFile(
-      path.resolve(process.cwd(), feedbackFilePath),
+      path.resolve(process.cwd(), feedbackPath),
       "utf-8"
     );
 
+    // フロントマターを取り除いてAPIに送信
+    const slideWithoutFrontMatter = slideMarkdown.replace(frontMatterRegex, '').trim();
+
     const improvedSlide = await improveSlideWithFeedback(
       markdownContent,
-      slideMarkdown,
+      slideWithoutFrontMatter,
       feedback
     );
 
     console.log(improvedSlide);
+    return improvedSlide;
   } catch (error) {
     console.error("エラーが発生しました:", error);
     process.exit(1);

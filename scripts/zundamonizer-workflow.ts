@@ -3,12 +3,6 @@ import * as fs from "fs/promises";
 import path from "path";
 import { program } from "commander";
 
-// 各パッケージのmain関数をインポート
-import { main as marpifyMain } from "../packages/marpify/cli.ts";
-import { main as addNotesMain } from "../packages/zunda-notes/add-notes.ts";
-import { main as evaluateMain } from "../packages/zunda-notes/evaluation.ts";
-import { main as improveMain } from "../packages/zunda-notes/improve.ts";
-
 program
   .name("zundamonizer-workflow")
   .description("マークダウン資料からMarpスライド生成、ずんだもん会話形式ノート追加まで一気通貫で実行")

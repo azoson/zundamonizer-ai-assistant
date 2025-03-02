@@ -1,14 +1,17 @@
 #!/usr/bin/env bun
 import { program } from "commander";
 import path from "path";
-import { execSync } from "child_process";
 import * as fs from "fs/promises";
 import {
   exportMarpSlide,
   addFrontMatter,
   applyCustomTheme,
-  previewMarpSlide,
 } from "./utils.js";
+
+// 各スクリプトの主要な関数をインポート
+import { main as generateMain } from "./generate.js";
+import { main as evaluateMain } from "./evaluation.js";
+import { main as improveMain } from "./improve.js";
 
 interface CommandOptions {
   output?: string;
@@ -31,17 +34,20 @@ program
   .option("-o, --output <path>", "出力ファイルパス")
   .action(async (documentPath: string, options: CommandOptions) => {
     const outputPath = options.output;
-    const cmd = `bun run ${path.join(__dirname, "generate.ts")} "${documentPath}" ${
-      outputPath ? `"${outputPath}"` : ""
-    }`;
+    console.log("スライドを生成中...");
+
     try {
-      console.log("スライドを生成中...");
-      const output = execSync(cmd).toString();
-      if (!outputPath) {
+      const output = await generateMain(documentPath, outputPath);
+
+      if (!outputPath && output) {
         console.log(output);
       }
     } catch (error) {
-      console.error("エラーが発生しました:", error);
+      if (error instanceof Error) {
+        console.error(`スライド生成エラー: ${error.message}`);
+      } else {
+        console.error("不明なエラーが発生しました");
+      }
       process.exit(1);
     }
   });
@@ -54,18 +60,25 @@ program
   .option("-o, --output <path>", "評価結果の出力パス")
   .action(async (documentPath: string, slidePath: string, options: CommandOptions) => {
     const outputPath = options.output;
-    const cmd = `bun run ${path.join(__dirname, "evaluation.ts")} "${documentPath}" "${slidePath}"`;
+    console.log("スライドを評価中...");
+
     try {
-      console.log("スライドを評価中...");
-      const output = execSync(cmd).toString();
-      if (outputPath) {
-        await fs.writeFile(path.resolve(process.cwd(), outputPath), output, "utf-8");
+      const evaluation = await evaluateMain(documentPath, slidePath);
+
+      if (outputPath && evaluation) {
+        const outputFullPath = path.resolve(process.cwd(), outputPath);
+        const outputDir = path.dirname(outputFullPath);
+        await fs.mkdir(outputDir, { recursive: true });
+
+        await fs.writeFile(outputFullPath, evaluation, "utf-8");
         console.log(`評価結果を ${outputPath} に保存しました`);
-      } else {
-        console.log(output);
       }
     } catch (error) {
-      console.error("エラーが発生しました:", error);
+      if (error instanceof Error) {
+        console.error(`スライド評価エラー: ${error.message}`);
+      } else {
+        console.error("不明なエラーが発生しました");
+      }
       process.exit(1);
     }
   });
@@ -79,21 +92,25 @@ program
   .option("-o, --output <path>", "改善されたスライドの出力パス")
   .action(async (documentPath: string, slidePath: string, feedbackPath: string, options: CommandOptions) => {
     const outputPath = options.output;
-    const cmd = `bun run ${path.join(
-      __dirname,
-      "improve.ts"
-    )} "${documentPath}" "${slidePath}" "${feedbackPath}"`;
+    console.log("スライドを改善中...");
+
     try {
-      console.log("スライドを改善中...");
-      const output = execSync(cmd).toString();
-      if (outputPath) {
-        await fs.writeFile(path.resolve(process.cwd(), outputPath), output, "utf-8");
+      const improvedSlide = await improveMain(documentPath, slidePath, feedbackPath);
+
+      if (outputPath && improvedSlide) {
+        const outputFullPath = path.resolve(process.cwd(), outputPath);
+        const outputDir = path.dirname(outputFullPath);
+        await fs.mkdir(outputDir, { recursive: true });
+
+        await fs.writeFile(outputFullPath, improvedSlide, "utf-8");
         console.log(`改善されたスライドを ${outputPath} に保存しました`);
-      } else {
-        console.log(output);
       }
     } catch (error) {
-      console.error("エラーが発生しました:", error);
+      if (error instanceof Error) {
+        console.error(`スライド改善エラー: ${error.message}`);
+      } else {
+        console.error("不明なエラーが発生しました");
+      }
       process.exit(1);
     }
   });
@@ -107,45 +124,41 @@ program
     const outputDir = options.outputDir || "output";
     const basename = path.basename(documentPath, path.extname(documentPath));
 
-    try {
-      // 出力ディレクトリを作成
-      await fs.mkdir(outputDir, { recursive: true });
+    // 出力ディレクトリを作成
+    await fs.mkdir(outputDir, { recursive: true });
 
+    try {
       // 生成
       const slidePath = path.join(outputDir, `${basename}-slide.md`);
       console.log(`スライドを生成中...`);
-      const generateCmd = `bun run ${path.join(
-        __dirname,
-        "generate.ts"
-      )} "${documentPath}" "${slidePath}"`;
-      execSync(generateCmd);
+      await generateMain(documentPath, slidePath);
       console.log(`スライドを ${slidePath} に生成しました`);
 
       // 評価
       const evaluationPath = path.join(outputDir, `${basename}-evaluation.md`);
       console.log(`スライドを評価中...`);
-      const evaluateCmd = `bun run ${path.join(
-        __dirname,
-        "evaluation.ts"
-      )} "${documentPath}" "${slidePath}"`;
-      const evaluation = execSync(evaluateCmd).toString();
-      await fs.writeFile(evaluationPath, evaluation, "utf-8");
-      console.log(`評価結果を ${evaluationPath} に保存しました`);
+      const evaluation = await evaluateMain(documentPath, slidePath);
+      if (evaluation) {
+        await fs.writeFile(evaluationPath, evaluation, "utf-8");
+        console.log(`評価結果を ${evaluationPath} に保存しました`);
+      }
 
       // 改善
       const improvedSlidePath = path.join(outputDir, `${basename}-improved-slide.md`);
       console.log(`スライドを改善中...`);
-      const improveCmd = `bun run ${path.join(
-        __dirname,
-        "improve.ts"
-      )} "${documentPath}" "${slidePath}" "${evaluationPath}"`;
-      const improvedSlide = execSync(improveCmd).toString();
-      await fs.writeFile(improvedSlidePath, improvedSlide, "utf-8");
-      console.log(`改善されたスライドを ${improvedSlidePath} に保存しました`);
+      const improvedSlide = await improveMain(documentPath, slidePath, evaluationPath);
+      if (improvedSlide) {
+        await fs.writeFile(improvedSlidePath, improvedSlide, "utf-8");
+        console.log(`改善されたスライドを ${improvedSlidePath} に保存しました`);
+      }
 
       console.log("ワークフロー完了！");
     } catch (error) {
-      console.error("エラーが発生しました:", error);
+      if (error instanceof Error) {
+        console.error(`ワークフローエラー: ${error.message}`);
+      } else {
+        console.error("不明なエラーが発生しました");
+      }
       process.exit(1);
     }
   });
@@ -158,41 +171,24 @@ program
   .option("-f, --format <format>", "出力形式（pdf, html, pptx）", "pdf")
   .option("-t, --theme <theme>", "使用するテーマ")
   .action(async (slidePath: string, options: CommandOptions) => {
-    try {
-      const { output, format, theme } = options;
-      if (!output) {
-        throw new Error("出力ファイルパスを指定してください");
-      }
-      if (!format || !["pdf", "html", "pptx"].includes(format)) {
-        throw new Error("有効な出力形式（pdf, html, pptx）を指定してください");
-      }
-
-      console.log(`スライドを ${format} 形式でエクスポート中...`);
-
-      await exportMarpSlide({
-        input: slidePath,
-        output,
-        format: format as "pdf" | "html" | "pptx",
-        theme
-      });
-    } catch (error) {
-      console.error("エラーが発生しました:", error);
+    const { output, format, theme } = options;
+    if (!output) {
+      console.error("エラー: 出力ファイルパスを指定してください");
       process.exit(1);
     }
-  });
-
-program
-  .command("preview")
-  .description("Marpスライドをブラウザでプレビュー")
-  .argument("<slide-path>", "Marpスライドのパス")
-  .action(async (slidePath: string) => {
-    try {
-      console.log("スライドをプレビュー中...");
-      await previewMarpSlide(slidePath);
-    } catch (error) {
-      console.error("エラーが発生しました:", error);
+    if (!format || !["pdf", "html", "pptx"].includes(format)) {
+      console.error("エラー: 有効な出力形式（pdf, html, pptx）を指定してください");
       process.exit(1);
     }
+
+    console.log(`スライドを ${format} 形式でエクスポート中...`);
+
+    await exportMarpSlide({
+      input: slidePath,
+      output,
+      format: format as "pdf" | "html" | "pptx",
+      theme
+    });
   });
 
 program
@@ -201,14 +197,9 @@ program
   .argument("<slide-path>", "Marpスライドのパス")
   .argument("<theme-name>", "適用するテーマ名")
   .action(async (slidePath: string, themeName: string) => {
-    try {
-      console.log(`テーマ '${themeName}' を適用中...`);
-      await applyCustomTheme(slidePath, themeName);
-      console.log("テーマを適用しました");
-    } catch (error) {
-      console.error("エラーが発生しました:", error);
-      process.exit(1);
-    }
+    console.log(`テーマ '${themeName}' を適用中...`);
+    await applyCustomTheme(slidePath, themeName);
+    console.log("テーマを適用しました");
   });
 
 program
@@ -217,36 +208,33 @@ program
   .argument("<slide-path>", "Marpスライドのパス")
   .option("-t, --title <title>", "プレゼンテーションのタイトル")
   .option("-a, --author <author>", "著者名")
+  .option("-th, --theme <theme>", "使用するテーマ")
   .action(async (slidePath: string, options: CommandOptions) => {
-    try {
-      const frontMatter: Record<string, any> = {
-        marp: true
-      };
+    const frontMatter: Record<string, any> = {
+      marp: true
+    };
 
-      if (options.title) frontMatter.title = options.title;
-      if (options.author) frontMatter.author = options.author;
-      if (options.theme) frontMatter.theme = options.theme;
+    if (options.title) frontMatter.title = options.title;
+    if (options.author) frontMatter.author = options.author;
+    if (options.theme) frontMatter.theme = options.theme;
 
-      console.log("メタデータを追加中...");
-      await addFrontMatter(slidePath, frontMatter);
-      console.log("メタデータを追加しました");
-    } catch (error) {
-      console.error("エラーが発生しました:", error);
-      process.exit(1);
-    }
+    console.log("メタデータを追加中...");
+    await addFrontMatter(slidePath, frontMatter);
+    console.log("メタデータを追加しました");
   });
 
 // メイン関数をエクスポート
 export async function main(args: string[] = process.argv.slice(2)): Promise<any> {
-  // Commanderの動作モードをテストモードに設定して、parseAsyncが処理を終了させないようにする
-  program.exitOverride();
   try {
+    // Commanderの動作モードをテストモードに設定して、parseAsyncが処理を終了させないようにする
+    program.exitOverride();
     return await program.parseAsync(args, { from: 'user' });
   } catch (error: any) {
     if (error.code === 'commander.helpDisplayed' || error.code === 'commander.unknownOption') {
       // ヘルプ表示やオプションエラーの場合はそのまま表示を許可
       return;
     }
+    console.error(`コマンドライン引数エラー: ${error.message}`);
     throw error;
   }
 }

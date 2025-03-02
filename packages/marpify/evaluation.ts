@@ -6,7 +6,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-async function evaluateMarpSlide(
+export async function evaluateMarpSlide(
   markdownContent: string,
   slideMarkdown: string
 ): Promise<string> {
@@ -55,22 +55,23 @@ async function evaluateMarpSlide(
   return result;
 }
 
-async function main() {
+export async function main(documentFilePath?: string, slidesFilePath?: string) {
   try {
-    const documentFilePath = process.argv[2];
-    const slidesFilePath = process.argv[3];
-    if (!documentFilePath || !slidesFilePath) {
+    const docPath = documentFilePath || process.argv[2];
+    const slidePath = slidesFilePath || process.argv[3];
+
+    if (!docPath || !slidePath) {
       throw new Error(
         "Usage: node index.ts <document-file-path> <slides-file-path>"
       );
     }
 
     const markdownContent = await fs.readFile(
-      path.resolve(process.cwd(), documentFilePath),
+      path.resolve(process.cwd(), docPath),
       "utf-8"
     );
     const slideMarkdown = await fs.readFile(
-      path.resolve(process.cwd(), slidesFilePath),
+      path.resolve(process.cwd(), slidePath),
       "utf-8"
     );
     const evaluation = await evaluateMarpSlide(
@@ -79,10 +80,14 @@ async function main() {
     );
 
     console.log(evaluation);
+    return evaluation;
   } catch (error) {
     console.error("エラーが発生しました:", error);
     process.exit(1);
   }
 }
 
-main();
+// スクリプトが直接実行された場合のみmain関数を実行
+if (import.meta.main) {
+  main();
+}

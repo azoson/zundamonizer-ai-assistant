@@ -62,14 +62,15 @@ ${promptContent}`
 
   const response = await openai.chat.completions.create(requestParams);
 
-  console.log("OpenAI API レスポンス:", JSON.stringify(response, null, 2));
-
   const result = response.choices[0]?.message?.content;
   if (!result) {
     throw new Error("プレゼンターノートの評価に失敗しました");
   }
 
-  return result;
+  // コードブロック宣言を削除
+  const cleanedResult = result.replace(/^```(?:markdown)?|```$/g, '').trim();
+
+  return cleanedResult;
 }
 
 // メイン処理
