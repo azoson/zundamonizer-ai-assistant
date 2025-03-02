@@ -2,11 +2,6 @@
 import { program } from "commander";
 import path from "path";
 import * as fs from "fs/promises";
-import {
-  exportMarpSlide,
-  addFrontMatter,
-  applyCustomTheme,
-} from "./utils.js";
 
 // 各スクリプトの主要な関数をインポート
 import { main as generateMain } from "./generate.js";
@@ -161,66 +156,6 @@ program
       }
       process.exit(1);
     }
-  });
-
-program
-  .command("export")
-  .description("Marpスライドを様々な形式にエクスポート")
-  .argument("<slide-path>", "Marpスライドのパス")
-  .option("-o, --output <path>", "出力ファイルパス")
-  .option("-f, --format <format>", "出力形式（pdf, html, pptx）", "pdf")
-  .option("-t, --theme <theme>", "使用するテーマ")
-  .action(async (slidePath: string, options: CommandOptions) => {
-    const { output, format, theme } = options;
-    if (!output) {
-      console.error("エラー: 出力ファイルパスを指定してください");
-      process.exit(1);
-    }
-    if (!format || !["pdf", "html", "pptx"].includes(format)) {
-      console.error("エラー: 有効な出力形式（pdf, html, pptx）を指定してください");
-      process.exit(1);
-    }
-
-    console.log(`スライドを ${format} 形式でエクスポート中...`);
-
-    await exportMarpSlide({
-      input: slidePath,
-      output,
-      format: format as "pdf" | "html" | "pptx",
-      theme
-    });
-  });
-
-program
-  .command("theme")
-  .description("Marpスライドにテーマを適用")
-  .argument("<slide-path>", "Marpスライドのパス")
-  .argument("<theme-name>", "適用するテーマ名")
-  .action(async (slidePath: string, themeName: string) => {
-    console.log(`テーマ '${themeName}' を適用中...`);
-    await applyCustomTheme(slidePath, themeName);
-    console.log("テーマを適用しました");
-  });
-
-program
-  .command("add-meta")
-  .description("Marpスライドにメタデータを追加")
-  .argument("<slide-path>", "Marpスライドのパス")
-  .option("-t, --title <title>", "プレゼンテーションのタイトル")
-  .option("-a, --author <author>", "著者名")
-  .option("-th, --theme <theme>", "使用するテーマ")
-  .action(async (slidePath: string, options: CommandOptions) => {
-    const frontMatter: Record<string, any> = {
-      marp: true
-    };
-
-    if (options.title) frontMatter.title = options.title;
-    if (options.author) frontMatter.author = options.author;
-    if (options.theme) frontMatter.theme = options.theme;
-
-    console.log("メタデータを追加中...");
-    await addFrontMatter(slidePath, frontMatter);
-    console.log("メタデータを追加しました");
   });
 
 // メイン関数をエクスポート

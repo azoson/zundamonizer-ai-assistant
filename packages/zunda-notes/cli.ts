@@ -1,9 +1,7 @@
 #!/usr/bin/env bun
 import { program } from "commander";
 import path from "path";
-import { execSync } from "child_process";
 import * as fs from "fs/promises";
-import { previewMarpSlide } from "./utils.js";
 // 各モジュールのmain関数をインポート
 import { main as addNotesMain } from "./add-notes.js";
 import { main as evaluateMain } from "./evaluation.js";
@@ -138,20 +136,6 @@ program
       console.log("ワークフロー完了！");
     } catch (error) {
       console.error("エラーが発生しました:", error);
-      process.exit(1);
-    }
-  });
-
-program
-  .command("preview")
-  .description("Marpスライドをプレビュー表示")
-  .argument("<slide-path>", "プレビューするMarpスライドのパス")
-  .action(async (slidePath: string) => {
-    try {
-      console.log(`${slidePath} をプレビュー中...`);
-      await previewMarpSlide(slidePath);
-    } catch (error) {
-      console.error("プレビューに失敗しました:", error);
       process.exit(1);
     }
   });

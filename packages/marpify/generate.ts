@@ -6,9 +6,6 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// フロントマターを検出する正規表現
-const frontMatterRegex = /^---\s*[\r\n]+([\s\S]*?)[\r\n]+---/;
-
 const MARP_DESCRIPTION = `
 - ページの区切りは "---" を使用
 - テキストの位置調整は '<div style="text-align: center;">' などを使用
