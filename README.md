@@ -10,6 +10,7 @@ zundamonizer-ai-assistant/
 │   ├── marpify/       # マークダウン資料をMarpスライド化するツール
 │   └── zunda-notes/   # Marpスライドにずんだもんと春日部つむぎの会話形式プレゼンターノートを追加するツール
 ├── scripts/           # 統合ワークフロースクリプト
+├── examples/          # サンプル入力とワークフロー出力の例
 └── package.json       # ワークスペース設定
 ```
 
@@ -173,3 +174,27 @@ bun start add path/to/slide.md -o output/slide-with-notes.md
 ```
 
 詳細な使い方は [packages/zunda-notes/README.md](packages/zunda-notes/README.md) をご参照ください。
+
+## 利用例
+
+リポジトリにはサンプル入力と出力例が含まれています：
+
+```bash
+# 例示ディレクトリを確認
+ls examples/
+
+# 特定の例の入力を確認
+cat examples/simple-presentation/input.md
+
+# 特定の例の出力を確認
+ls examples/simple-presentation/output/
+```
+
+各例示ディレクトリには、入力マークダウンファイルと、ワークフローで生成される一連の出力ファイルが含まれています。これらの例は、ずんだもナイザーワークフローの使い方と期待される出力を理解するのに役立ちます。
+
+独自のマークダウン文書でワークフローを試すには：
+
+```bash
+# examples内の入力マークダウンを使用してワークフロー実行
+bun zundamonizer-workflow examples/simple-presentation/input.md -o my-output
+```
